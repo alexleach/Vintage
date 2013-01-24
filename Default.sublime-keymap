@@ -853,8 +853,7 @@
 	{ "keys": ["s"], "command": "set_action_motion", "args": {
 		"action": "enter_insert_mode",
 		"action_args": {"insert_command": "vi_delete"},
-		"motion": "vi_move_by_characters_in_line",
-		"motion_args": {"forward": true, "extend": true, "visual": false }},
+		"motion": "expand_selection" },
 		"context": [{"key": "setting.command_mode"}]
 	},
 
