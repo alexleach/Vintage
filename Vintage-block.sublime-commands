@@ -1,0 +1,27 @@
+[
+    {"keys" : ["ctrl+v"], "command": "enter_visual_block_mode",
+        "context": [{"key": "setting.command_mode"}]},
+
+    {"keys" : ["ctrl+v"], "command": "enter_visual_block_mode",
+        "context":
+        [
+            {"key": "setting.command_mode"},
+            {"key": "vi_motion_mode", "operand": "block"}
+        ]
+    },
+    {"keys" : ["ctrl+v"], "command": "set_motion_mode", "args": {"mode": "block"},
+        "context":
+        [
+            {"key": "setting.command_mode"},
+            {"key": "vi_has_action"}
+        ]
+    },
+	{ "keys": ["O"], "command": "vi_reverse_block_selections_direction",
+		"context":
+		[
+			{"key": "setting.command_mode"},
+			{"key": "selection_empty", "operator": "equal", "operand": false},
+            {"key": "setting.visual_block_mode", "operator": "equal", "operand": true}
+		]
+	},
+]
