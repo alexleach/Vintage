@@ -421,6 +421,11 @@
 		"context": [{"key": "setting.command_mode"}]
 	},
 
+	{
+		"keys": ["g", "v"], "command": "select_last_visual_mode_selection",
+		"context": [{"key": "setting.command_mode"}]
+	},
+
 	{ "keys": [">"], "command": "set_action", "args": {"action": "vi_indent", "description": "Indent"},
 		"context": [{"key": "setting.command_mode"}]
 	},
