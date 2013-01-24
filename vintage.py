@@ -10,6 +10,7 @@ MOTION_MODE_BLOCK = 3
 
 # Registers are used for clipboards and macro storage
 g_registers = {}
+REGISTER_NULL = '_'
 
 # Represents the current input state. The primary commands that interact with
 # this are:
@@ -70,7 +71,7 @@ def set_motion_mode(view, mode):
     g_input_state.motion_mode = mode
     update_status_line(view)
 
-def reset_input_state(view, reset_motion_mode = True, reset_block_mode = True):
+def reset_input_state(view, reset_motion_mode = True):
     global g_input_state
     g_input_state.prefix_repeat_digits = []
     g_input_state.action_command = None
@@ -445,6 +446,9 @@ def expand_to_block(view, clip_to_line = False, forward = True, by_lines = False
     # get stored 'int's
     x0, y0 = view._block_begin
     xf, yf = view._block_end
+
+    # TODO: find where view._block_end cursor has moved to, as
+    #  need to account for key presses like $, {, }, PgUp, etc.)
 
     # make the movement
     if by_lines:
@@ -870,7 +874,6 @@ class ShrinkSelectionsToBeginning(sublime_plugin.TextCommand):
 class ShrinkSelectionsToEnd(sublime_plugin.TextCommand):
     def shrink(self, r):
         end = r.end()
-        #if self.view.substr(end - 1) == u'\n':
         line_end = view.line_endings()
         end_len = len( line_end )
         if self.view.substr(end - end_len) == line_end:
@@ -973,6 +976,11 @@ class ViPasteLeft(ViPrefixableCommand):
                                                       'register': register})
 
 def set_register(view, register, forward):
+    if register == REGISTER_NULL:
+        # This is the null register; do nothing.
+        # More info in Vim: :help "_
+        return
+
     delta = 1
     if not forward:
         delta = -1
@@ -1007,6 +1015,11 @@ def set_register(view, register, forward):
             g_registers[reg] = text
 
 def get_register(view, register):
+    if register == REGISTER_NULL:
+        # This is the null register; do nothing.
+        # More info in Vim: :help "_
+        return
+
     use_sys_clipboard = view.settings().get('vintage_use_clipboard', False) == True
     register = register.lower()
     if register == '%':
@@ -1043,7 +1056,6 @@ class PasteFromRegisterCommand(sublime_plugin.TextCommand):
         for s in regions:
             s = sublime.Region(s.a + offset, s.b + offset)
 
-            print 'pasting from register command'
             if len(text) > 0 and text[-1] == '\n':
                 # paste line-wise
                 if forward:
@@ -1168,6 +1180,7 @@ class ViSelectBookmark(sublime_plugin.TextCommand):
     def run(self, edit, character, select_bol=False):
         self.view.run_command('select_all_bookmarks', {'name': "bookmark_" + character})
         if select_bol:
+            self.view.run_command('vi_move_to_first_non_white_space_character')
             sels = list(self.view.sel())
             self.view.sel().clear()
             for r in sels:
