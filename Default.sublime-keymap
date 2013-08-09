@@ -857,7 +857,7 @@
 
 	{ "keys": ["s"], "command": "set_action_motion", "args": {
 		"action": "enter_insert_mode",
-		"action_args": {"insert_command": "vi_delete"},
+		"action_args": {"insert_command": "right_delete"},
 		"motion": "expand_selection" },
 		"context": [{"key": "setting.command_mode"}]
 	},
