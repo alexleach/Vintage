@@ -442,7 +442,8 @@ def expand_to_full_line(view, ignore_trailing_newline = True):
     for s in new_sel:
         view.sel().add(s)
 
-def expand_to_block(view, clip_to_line = False, forward = True, by_lines = False):
+def clip_to_block(view, motion_args):
+
     # get stored 'int's
     x0, y0 = view._block_begin
     xf, yf = view._block_end
@@ -450,25 +451,28 @@ def expand_to_block(view, clip_to_line = False, forward = True, by_lines = False
     # TODO: find where view._block_end cursor has moved to, as
     #  need to account for key presses like $, {, }, PgUp, etc.)
 
-    # make the movement
-    if by_lines:
-        if forward:
-            xf += 1
+    if motion_args:
+        # make the movement
+        by_lines = True if motion_args.get('by', None) == 'lines' else False
+        forward = True if motion_args.get('forward', None) == True else False
+        if by_lines:
+            if forward:
+                xf += 1
+            else:
+                xf -= 1
         else:
-            xf -= 1
-    else:
-        if forward:
-            yf += 1
-            if yf == y0:
-                # swap y0 <--> yf
-                y0 -= 1
+            if forward:
                 yf += 1
-        else:
-            yf -= 1
-            if yf == y0:
-                # swap y0 <--> yf
-                y0 += 1
+                if yf == y0:
+                    # swap y0 <--> yf
+                    y0 -= 1
+                    yf += 1
+            else:
                 yf -= 1
+                if yf == y0:
+                    # swap y0 <--> yf
+                    y0 += 1
+                    yf -= 1
 
     # store changed 'int's
     view._block_begin = ( x0, y0 )
@@ -483,15 +487,16 @@ def expand_to_block(view, clip_to_line = False, forward = True, by_lines = False
         move = 1
 
     new_sel = []
-    for line in xrange( x0, xf, move):
+    for line in xrange(x0, xf, move):
         # le - absolute line end position
         le = view.line(view.text_point(line,0)).end()
         line_end_col = view.rowcol(le)[1]
 
         end_col = yf
-        if clip_to_line:
+        #if clip_to_line:
             # Expand selection to end of line 
-            end_col = line_end_col
+            #print "clip_to_line"
+            #end_col = line_end_col
 
         # figure out left / right
         start_col = y0
@@ -505,6 +510,7 @@ def expand_to_block(view, clip_to_line = False, forward = True, by_lines = False
         # adjust lines shorter than selection
         if left_col > line_end_col:
             # if start column is after end of line
+            continue
             start_col = line_end_col
             end_col = line_end_col+1
         elif right_col > line_end_col:
@@ -524,7 +530,7 @@ def expand_to_block(view, clip_to_line = False, forward = True, by_lines = False
     sel = view.sel()
     sel.clear()
     for s in new_sel:
-        sel.add( s )
+        sel.add(s)
 
 # Visual Line mode
 def orient_single_line_region(view, forward, r):
@@ -543,7 +549,7 @@ def set_single_line_selection_direction(view, forward):
 
 # Visual Block mode
 def orient_block_region(view, forward, r):
-    # Currently, we do all orienting we need in expand_to_block().
+    # Currently, we do all orienting we need in clip_to_block().
     # This probably isn't satisfactory...
     # what about o and O? (switch cursor position)
     return r
@@ -656,23 +662,24 @@ class ViEval(sublime_plugin.TextCommand):
             motion_repeat *= prefix_repeat
             prefix_repeat = 1
 
-        # Check if the motion command would like to handle the repeat itself
-        if motion_args and 'repeat' in motion_args:
-            motion_args['repeat'] = motion_repeat * prefix_repeat
-            motion_repeat = 1
-            prefix_repeat = 1
-
-        # Some commands behave differently if a repeat is given. e.g., 1G goes
-        # to line one, but G without a repeat goes to EOF. Let the command
-        # know if a repeat was specified.
-        if motion_args and 'explicit_repeat' in motion_args:
-            motion_args['explicit_repeat'] = explicit_repeat
-
         visual_mode = self.view.has_non_empty_selection_region()
 
-        # Let the motion know if we're in visual mode, if it wants to know
-        if motion_args and 'visual' in motion_args:
-            motion_args['visual'] = visual_mode
+        # Check if the motion command would like to handle the repeat itself
+        if motion_args:
+            if 'repeat' in motion_args:
+                motion_args['repeat'] = motion_repeat * prefix_repeat
+                motion_repeat = 1
+                prefix_repeat = 1
+
+            # Some commands behave differently if a repeat is given. e.g., 1G goes
+            # to line one, but G without a repeat goes to EOF. Let the command
+            # know if a repeat was specified.
+            if 'explicit_repeat' in motion_args:
+                motion_args['explicit_repeat'] = explicit_repeat
+
+            # Let the motion know if we're in visual mode, if it wants to know
+            if 'visual' in motion_args:
+                motion_args['visual'] = visual_mode
 
         for i in xrange(prefix_repeat):
             # Run the motion command, extending the selection to the range of
@@ -681,10 +688,8 @@ class ViEval(sublime_plugin.TextCommand):
                 direction = 0
                 if motion_args and 'forward' in motion_args:
                     forward = motion_args['forward']
-                    if forward:
-                        direction = 1
-                    else:
-                        direction = -1
+                    direction = 1 if forward else -1
+
 
                 for j in xrange(motion_repeat):
                     if direction != 0 and motion_mode == MOTION_MODE_LINE:
@@ -703,9 +708,10 @@ class ViEval(sublime_plugin.TextCommand):
                         # important so that Vk on an empty line would select
                         # the following line.
                         pass
-                    elif motion_mode == MOTION_MODE_BLOCK:
-                        transform_selection_regions(self.view,
-                            lambda r: sublime.Region(r.b, r.b + 1, r.xpos()) if r.empty() else r)
+                    #elif motion_mode == MOTION_MODE_BLOCK:
+                    #    transform_selection_regions(self.view,
+                    #        lambda r: sublime.Region(r.b, r.b + 1, r.xpos()) if r.empty() else r)
+                    #        #lambda r: None if r.empty() else r)
                     elif direction == 1 and motion_inclusive:
                         # Expand empty selections include the character
                         # they're on, and to start from the RHS of the
@@ -716,8 +722,7 @@ class ViEval(sublime_plugin.TextCommand):
                     self.view.run_command(motion_command, motion_args)
 
                 if motion_mode == MOTION_MODE_BLOCK:
-                    by_lines = True if 'by' in motion_args and motion_args['by'] == 'lines' else False
-                    expand_to_block(self.view, motion_clip_to_line, forward, by_lines)
+                    clip_to_block(self.view, motion_args)
 
             # If the motion needs to be clipped to the line, remove any
             # trailing newlines from the selection. For example, with the
@@ -732,6 +737,7 @@ class ViEval(sublime_plugin.TextCommand):
             reindent = False
 
             if motion_mode == MOTION_MODE_LINE:
+                print("expanding to full line")
                 expand_to_full_line(self.view, visual_mode)
                 if action_command == "enter_insert_mode":
                     # When lines are deleted before entering insert mode, the
@@ -821,21 +827,25 @@ class EnterVisualMode(sublime_plugin.TextCommand):
 
 class ExitVisualMode(sublime_plugin.TextCommand):
     def run(self, edit, toggle = False):
+        view = self.view
         if g_input_state.motion_mode == MOTION_MODE_BLOCK:
             print 'exiting visual mode'
-            set_motion_mode( self.view, MOTION_MODE_NORMAL )
-            self.view.sel().clear()
-            self.view.sel().add( shrink_to_first_char( self.view._block_begin ) )
+            set_motion_mode( view, MOTION_MODE_NORMAL )
+            view.sel().clear()
+            start = view.text_point( *view._block_begin )
+            #end   = view.text_point( line, end_col )
+            r = sublime.Region(start, start+1)
+            view.sel().add( shrink_to_first_char( r ) )
         if toggle:
             if g_input_state.motion_mode != MOTION_MODE_NORMAL:
-                set_motion_mode(self.view, MOTION_MODE_NORMAL)
+                set_motion_mode(view, MOTION_MODE_NORMAL)
             else:
-                self.view.run_command('shrink_selections')
+                view.run_command('shrink_selections')
         else:
-            set_motion_mode(self.view, MOTION_MODE_NORMAL)
-            self.view.run_command('shrink_selections')
+            set_motion_mode(view, MOTION_MODE_NORMAL)
+            view.run_command('shrink_selections')
 
-        self.view.run_command('unmark_undo_groups_for_gluing')
+        view.run_command('unmark_undo_groups_for_gluing')
 
 class EnterVisualLineMode(sublime_plugin.TextCommand):
     def run(self, edit):
