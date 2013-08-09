@@ -731,13 +731,13 @@ class ViEval(sublime_plugin.TextCommand):
             # the caret to the first character of the next line.
             if motion_mode != MOTION_MODE_LINE and action_command and motion_clip_to_line:
             #if motion_mode not in (MOTION_MODE_LINE, MOTION_MODE_BLOCK) and action_command and motion_clip_to_line:
-                print 'transforming selcetion regions'
+                #print 'transforming selcetion regions'
                 transform_selection_regions(self.view, lambda r: self.view.split_by_newlines(r)[0])
 
             reindent = False
 
             if motion_mode == MOTION_MODE_LINE:
-                print("expanding to full line")
+                #print("expanding to full line")
                 expand_to_full_line(self.view, visual_mode)
                 if action_command == "enter_insert_mode":
                     # When lines are deleted before entering insert mode, the
@@ -751,14 +751,14 @@ class ViEval(sublime_plugin.TextCommand):
 
             if action_command:
                 # Apply the action to the selection
-                print 'action command {0}( {1} )'.format( action_command, action_args )
+                #print 'action command {0}( {1} )'.format( action_command, action_args )
                 self.view.run_command(action_command, action_args)
                 if reindent and self.view.settings().get('auto_indent'):
                     self.view.run_command('reindent', {'force_indent': False})
 
 
         if not visual_mode:
-            print 'not visual mode'
+            #print 'not visual mode'
             # Shrink the selection down to a point
             if motion_inclusive:
                 transform_selection_regions(self.view, shrink_inclusive)
@@ -829,7 +829,7 @@ class ExitVisualMode(sublime_plugin.TextCommand):
     def run(self, edit, toggle = False):
         view = self.view
         if g_input_state.motion_mode == MOTION_MODE_BLOCK:
-            print 'exiting visual mode'
+            #print 'exiting visual mode'
             set_motion_mode( view, MOTION_MODE_NORMAL )
             view.sel().clear()
             start = view.text_point( *view._block_begin )
