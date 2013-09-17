@@ -63,6 +63,41 @@ class ViMoveToFirstNonWhiteSpaceCharacter(sublime_plugin.TextCommand):
         transform_selection(self.view, lambda pt: self.first_character(pt),
             extend=extend)
 
+class ViMoveToNextLineStart(sublime_plugin.TextCommand):
+    def move_to_next_line(self, pt):
+        if not self.view.substr(self.view.line(pt-1)).rstrip('\n\r'):
+            # If previous line was empty, then the cursor is already on the new
+            # line character, so just need to increment the current position just
+            # one character.
+            return pt + 1
+        # get the next line number and its contents
+        row = self.view.rowcol(pt)[0]
+        line_start = self.view.text_point(row+1, 0)
+        next_line = self.view.line(line_start)
+        # calculate where to put the cursor
+        offset = 0
+        lstr = self.view.substr(next_line)
+        for c in lstr:
+            if c == ' ' or c == '\t':
+                offset += 1
+            else:
+                break
+        return next_line.a + offset
+
+    def run(self, edit):
+        # figure out whether anything is selected or not.
+        selected = self.view.sel()
+        new_sel = [sel for sel in selected]
+        cursor = new_sel.pop(-1)
+        if cursor.empty():
+            # move the only cursor to start of next line
+            self.extend = extend = False
+        else:
+            # then move the end of the selected region only
+            self.extend = extend = True
+        # move cursor to next line
+        transform_selection(self.view, lambda pt: self.move_to_next_line(pt),
+            extend=extend)
 
 g_last_move_command = None
 
@@ -373,3 +408,4 @@ class ScrollCurrentLineToScreenCenter(sublime_plugin.TextCommand):
          point = advance_while_white_space_character(self.view, point)
          transform_selection(self.view, lambda pt: point, extend)
          self.view.run_command('show_at_center')
+

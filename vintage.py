@@ -310,7 +310,7 @@ class SetMotion(sublime_plugin.TextCommand):
             if m != -1:
                 set_motion_mode(self.view, m)
             else:
-                print "invalid motion mode:", mode
+                print("invalid motion mode:", mode)
 
         eval_input(self.view)
 
@@ -357,7 +357,7 @@ class SetMotionMode(sublime_plugin.TextCommand):
             set_motion_mode(self.view, m)
             g_input_state.motion_mode_overridden = True
         else:
-            print "invalid motion mode"
+            print("invalid motion mode")
 
 class SetRegister(sublime_plugin.TextCommand):
     def run_(self, args):
@@ -442,11 +442,21 @@ def expand_to_full_line(view, ignore_trailing_newline = True):
     for s in new_sel:
         view.sel().add(s)
 
-def clip_to_block(view, motion_args):
+def clip_to_block(view, motion_cmd, motion_args):
 
-    # get stored 'int's
+    #print 'cmd', motion_cmd
+    #print 'args', motion_args
+
+    ## Get stored 'int's: 
+    ## x = line number
+    ## y = col number
+
     x0, y0 = view._block_begin
     xf, yf = view._block_end
+    #print 'view', view.sel()
+    #print 'x0, y0', x0, y0
+    #print 'xf, yf', xf, yf
+
 
     # TODO: find where view._block_end cursor has moved to, as
     #  need to account for key presses like $, {, }, PgUp, etc.)
@@ -475,8 +485,8 @@ def clip_to_block(view, motion_args):
                     yf -= 1
 
     # store changed 'int's
-    view._block_begin = ( x0, y0 )
-    view._block_end = ( xf, yf )
+    view._block_begin = (x0, y0)
+    view._block_end = (xf, yf)
 
     # adjust xf for zero-based iteration / indexing
     if xf < x0:
@@ -493,10 +503,6 @@ def clip_to_block(view, motion_args):
         line_end_col = view.rowcol(le)[1]
 
         end_col = yf
-        #if clip_to_line:
-            # Expand selection to end of line 
-            #print "clip_to_line"
-            #end_col = line_end_col
 
         # figure out left / right
         start_col = y0
@@ -708,10 +714,6 @@ class ViEval(sublime_plugin.TextCommand):
                         # important so that Vk on an empty line would select
                         # the following line.
                         pass
-                    #elif motion_mode == MOTION_MODE_BLOCK:
-                    #    transform_selection_regions(self.view,
-                    #        lambda r: sublime.Region(r.b, r.b + 1, r.xpos()) if r.empty() else r)
-                    #        #lambda r: None if r.empty() else r)
                     elif direction == 1 and motion_inclusive:
                         # Expand empty selections include the character
                         # they're on, and to start from the RHS of the
@@ -722,7 +724,7 @@ class ViEval(sublime_plugin.TextCommand):
                     self.view.run_command(motion_command, motion_args)
 
                 if motion_mode == MOTION_MODE_BLOCK:
-                    clip_to_block(self.view, motion_args)
+                    clip_to_block(self.view, motion_command, motion_args)
 
             # If the motion needs to be clipped to the line, remove any
             # trailing newlines from the selection. For example, with the
@@ -730,14 +732,11 @@ class ViEval(sublime_plugin.TextCommand):
             # delete the word, but not the newline, while 'w' should advance
             # the caret to the first character of the next line.
             if motion_mode != MOTION_MODE_LINE and action_command and motion_clip_to_line:
-            #if motion_mode not in (MOTION_MODE_LINE, MOTION_MODE_BLOCK) and action_command and motion_clip_to_line:
-                #print 'transforming selcetion regions'
                 transform_selection_regions(self.view, lambda r: self.view.split_by_newlines(r)[0])
 
             reindent = False
 
             if motion_mode == MOTION_MODE_LINE:
-                #print("expanding to full line")
                 expand_to_full_line(self.view, visual_mode)
                 if action_command == "enter_insert_mode":
                     # When lines are deleted before entering insert mode, the
@@ -751,14 +750,12 @@ class ViEval(sublime_plugin.TextCommand):
 
             if action_command:
                 # Apply the action to the selection
-                #print 'action command {0}( {1} )'.format( action_command, action_args )
                 self.view.run_command(action_command, action_args)
                 if reindent and self.view.settings().get('auto_indent'):
                     self.view.run_command('reindent', {'force_indent': False})
 
 
         if not visual_mode:
-            #print 'not visual mode'
             # Shrink the selection down to a point
             if motion_inclusive:
                 transform_selection_regions(self.view, shrink_inclusive)
@@ -829,7 +826,6 @@ class ExitVisualMode(sublime_plugin.TextCommand):
     def run(self, edit, toggle = False):
         view = self.view
         if g_input_state.motion_mode == MOTION_MODE_BLOCK:
-            #print 'exiting visual mode'
             set_motion_mode( view, MOTION_MODE_NORMAL )
             view.sel().clear()
             start = view.text_point( *view._block_begin )
